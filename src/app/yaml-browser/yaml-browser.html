@@ -1,0 +1,118 @@
+<div class="backdrop" (click)="cancel()"></div>
+
+<div class="dialog" role="dialog" aria-modal="true" aria-labelledby="browser-title">
+  <header class="dialog-head">
+    <h2 id="browser-title">Select a YAML file</h2>
+    <button type="button" class="icon-btn" (click)="cancel()" aria-label="Close">&times;</button>
+  </header>
+
+  <div class="source-row">
+    <label class="field">
+      <span>Repository</span>
+      <select
+        [value]="repositoryId()"
+        (change)="onRepositoryChange($any($event.target).value)"
+        [disabled]="loading() || repositories().length === 0"
+      >
+        <!-- [selected] per option, not [value] on the select: the options are
+             created by @for after the select's value binding is applied. -->
+        @for (repo of repositories(); track repo.id) {
+          <option [value]="repo.id" [selected]="repo.id === repositoryId()">{{ repo.name }}</option>
+        }
+      </select>
+    </label>
+
+    <label class="field">
+      <span>Branch</span>
+      <select
+        [value]="branch()"
+        (change)="onBranchChange($any($event.target).value)"
+        [disabled]="loading() || branches().length === 0"
+      >
+        @for (name of branches(); track name) {
+          <option [value]="name" [selected]="name === branch()">{{ name }}</option>
+        }
+      </select>
+    </label>
+  </div>
+
+  <div class="toolbar">
+    <button type="button" class="icon-btn" (click)="goUp()" [disabled]="isRoot() || loading()" title="Up one level">
+      &uarr;
+    </button>
+    <button type="button" class="icon-btn" (click)="refresh()" [disabled]="loading()" title="Refresh this folder">
+      &#8635;
+    </button>
+
+    <nav class="crumbs" aria-label="Folder path">
+      @for (crumb of crumbs(); track crumb.path; let last = $last) {
+        <button type="button" class="crumb" [class.current]="last" (click)="goToCrumb(crumb)">
+          {{ crumb.label }}
+        </button>
+        @if (!last) {
+          <span class="sep" aria-hidden="true">/</span>
+        }
+      }
+    </nav>
+
+    <input
+      class="filter"
+      type="search"
+      placeholder="Filter by name"
+      [value]="filterText()"
+      (input)="filterText.set($any($event.target).value)"
+    />
+
+    <label class="toggle">
+      <input
+        type="checkbox"
+        [checked]="showAllFiles()"
+        (change)="showAllFiles.set($any($event.target).checked)"
+      />
+      <span>Show all files</span>
+    </label>
+  </div>
+
+  @if (error()) {
+    <p class="error" role="alert">{{ error() }}</p>
+  }
+
+  <ul class="listing">
+    @if (loading()) {
+      <li class="state">Loading&hellip;</li>
+    } @else {
+      @for (entry of visibleEntries(); track entry.path) {
+        <li>
+          <button
+            type="button"
+            class="entry"
+            [class.folder]="entry.isFolder"
+            [class.yaml]="entry.isYaml"
+            [class.selected]="highlighted()?.path === entry.path"
+            [disabled]="!entry.isFolder && !entry.isYaml"
+            (click)="onEntryClick(entry)"
+            (dblclick)="onEntryDoubleClick(entry)"
+          >
+            <span class="icon" aria-hidden="true">{{ iconFor(entry) }}</span>
+            <span class="name">{{ entry.name }}</span>
+            <span class="size">{{ formatSize(entry.size) }}</span>
+          </button>
+        </li>
+      }
+      @if (emptyMessage()) {
+        <li class="state">{{ emptyMessage() }}</li>
+      }
+    }
+  </ul>
+
+  <footer class="dialog-foot">
+    <span class="chosen" [title]="highlighted()?.path ?? ''">
+      {{ highlighted() ? highlighted()!.path : 'No file selected' }}
+    </span>
+    <span class="spacer"></span>
+    <button type="button" class="btn" (click)="cancel()">Cancel</button>
+    <button type="button" class="btn primary" (click)="confirm()" [disabled]="!canConfirm()">
+      {{ confirming() ? 'Opening…' : 'Select' }}
+    </button>
+  </footer>
+</div>

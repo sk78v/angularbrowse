@@ -1,0 +1,174 @@
+<main class="page">
+  <header class="page-head">
+    <h1>Azure DevOps Server &mdash; YAML file picker</h1>
+    <p class="lede">
+      Browse a git repository on an on-prem Azure DevOps / TFS collection and select a
+      <code>.yml</code> or <code>.yaml</code> file.
+    </p>
+  </header>
+
+  <section class="card">
+    <button
+      type="button"
+      class="card-head"
+      (click)="settingsOpen.set(!settingsOpen())"
+      [attr.aria-expanded]="settingsOpen()"
+    >
+      <span class="chevron" [class.open]="settingsOpen()" aria-hidden="true">&rsaquo;</span>
+      <h2>Connection</h2>
+      <span class="status" [class.ready]="isConfigured()">
+        {{ isConfigured() ? 'Ready' : 'Incomplete' }}
+      </span>
+    </button>
+
+    @if (settingsOpen()) {
+      <div class="card-body">
+        <div class="grid">
+          <label class="field wide">
+            <span>Base URL</span>
+            <input
+              type="text"
+              [value]="connection().baseUrl"
+              (input)="update('baseUrl', $any($event.target).value)"
+              placeholder="/ado"
+            />
+            <small>
+              Use <code>/ado</code> to go through the dev-server proxy (avoids CORS), or the full
+              server address such as <code>https://tfs.contoso.com/tfs</code>.
+            </small>
+          </label>
+
+          <label class="field">
+            <span>Collection</span>
+            <input
+              type="text"
+              [value]="connection().collection"
+              (input)="update('collection', $any($event.target).value)"
+              placeholder="DefaultCollection"
+            />
+          </label>
+
+          <label class="field">
+            <span>Project</span>
+            <input
+              type="text"
+              [value]="connection().project"
+              (input)="update('project', $any($event.target).value)"
+              placeholder="MyTeamProject"
+            />
+          </label>
+
+          <label class="field">
+            <span>API version</span>
+            <select
+              [value]="connection().apiVersion"
+              (change)="update('apiVersion', $any($event.target).value)"
+            >
+              <option value="5.0">5.0 (Server 2019)</option>
+              <option value="6.0">6.0 (Server 2020)</option>
+              <option value="7.0">7.0 (Server 2022)</option>
+            </select>
+          </label>
+
+          <label class="field">
+            <span>Authentication</span>
+            <select
+              [value]="connection().authMode"
+              (change)="onAuthModeChange($any($event.target).value)"
+            >
+              <option value="pat">Personal access token</option>
+              <option value="windows">Windows / integrated</option>
+            </select>
+          </label>
+
+          @if (connection().authMode === 'pat') {
+            <label class="field wide">
+              <span>Personal access token</span>
+              <input
+                type="password"
+                autocomplete="off"
+                [value]="connection().pat"
+                (input)="update('pat', $any($event.target).value)"
+                placeholder="Requires the Code (Read) scope"
+              />
+              <small>Kept in memory for this tab only &mdash; it is never written to storage.</small>
+            </label>
+          } @else {
+            <p class="note wide">
+              Requests are sent with <code>withCredentials</code> so the browser can negotiate
+              NTLM/Kerberos. The server must allow credentialed requests from this origin.
+            </p>
+          }
+        </div>
+
+        <div class="actions">
+          <button type="button" class="btn" (click)="testConnection()" [disabled]="!isConfigured() || testing()">
+            {{ testing() ? 'Testing…' : 'Test connection' }}
+          </button>
+          <button type="button" class="btn subtle" (click)="resetConnection()">Reset</button>
+        </div>
+
+        @if (testResult(); as result) {
+          <p class="result" [class.ok]="result.ok" [class.bad]="!result.ok" role="status">
+            {{ result.message }}
+          </p>
+        }
+      </div>
+    }
+  </section>
+
+  <section class="card">
+    <div class="card-body picker">
+      <label class="field wide">
+        <span>Selected YAML file</span>
+        <div class="picker-row">
+          <input
+            type="text"
+            readonly
+            class="path-input"
+            [value]="selected()?.path ?? ''"
+            placeholder="No file selected"
+          />
+          <button type="button" class="btn primary" (click)="openBrowser()" [disabled]="!isConfigured()">
+            Browse…
+          </button>
+          @if (selected()) {
+            <button type="button" class="btn subtle" (click)="clearSelection()">Clear</button>
+          }
+        </div>
+        @if (!isConfigured()) {
+          <small>Fill in the connection details above to enable browsing.</small>
+        }
+      </label>
+    </div>
+  </section>
+
+  @if (selected(); as file) {
+    <section class="card">
+      <div class="card-body">
+        <dl class="meta">
+          <div><dt>Repository</dt><dd>{{ file.repository.name }}</dd></div>
+          <div><dt>Branch</dt><dd>{{ file.branch }}</dd></div>
+          <div><dt>File</dt><dd>{{ file.name }}</dd></div>
+          <div><dt>Lines</dt><dd>{{ previewLines().length }}</dd></div>
+          <div><dt>Object id</dt><dd class="mono">{{ file.objectId.slice(0, 12) }}</dd></div>
+        </dl>
+
+        <!-- Rendered as rows rather than a <pre> with literal newlines: Angular
+             collapses template whitespace, but interpolated values are safe. -->
+        <div class="preview">
+          @for (line of previewLines(); track $index) {
+            <div class="line">
+              <span class="ln">{{ $index + 1 }}</span>
+              <span class="code">{{ line }}</span>
+            </div>
+          }
+        </div>
+      </div>
+    </section>
+  }
+</main>
+
+@if (browserOpen()) {
+  <ado-yaml-browser (picked)="onPicked($event)" (cancelled)="onCancelled()" />
+}
