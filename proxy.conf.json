@@ -1,0 +1,11 @@
+{
+  "/ado": {
+    "target": "https://tfs.contoso.com",
+    "secure": false,
+    "changeOrigin": true,
+    "logLevel": "debug",
+    "pathRewrite": {
+      "^/ado": "/tfs"
+    }
+  }
+}

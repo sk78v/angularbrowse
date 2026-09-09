@@ -1,0 +1,10 @@
+{
+  "/ado": {
+    "target": "http://localhost:5111",
+    "secure": false,
+    "changeOrigin": true,
+    "pathRewrite": {
+      "^/ado": "/tfs"
+    }
+  }
+}
